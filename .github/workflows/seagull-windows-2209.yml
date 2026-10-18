@@ -106,6 +106,13 @@ jobs:
         TOOLCHAIN: ${{ github.workspace }}/toolchain/clang-cl-msvc.cmake
         HOST_ARCH: x86_64
 
+    - name: Backfill mapping headers
+      shell: bash
+      run: |
+        git clone --depth 1 https://github.com/geode-sdk/bindings.git mapping-shims
+        mkdir -p build/_deps/bindings-src/bindings/include/Geode/mapping
+        cp -R mapping-shims/bindings/include/Geode/mapping/. build/_deps/bindings-src/bindings/include/Geode/mapping/
+
     - name: Build
       run: ${{ env.base-build-command }}
 
