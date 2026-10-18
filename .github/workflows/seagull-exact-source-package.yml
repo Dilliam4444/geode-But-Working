@@ -1,0 +1,28 @@
+name: Package Exact Geode 2.209 Source
+
+on:
+  push:
+    branches:
+      - no-build-seagull-2209-exact
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package source
+        shell: bash
+        run: |
+          git archive --format=zip --output=Geode-2.209-Exact-Source.zip HEAD
+          sha256sum Geode-2.209-Exact-Source.zip > Geode-2.209-Exact-Source.sha256
+
+      - name: Upload source package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Geode-2.209-Exact-Source
+          path: |
+            Geode-2.209-Exact-Source.zip
+            Geode-2.209-Exact-Source.sha256
