@@ -101,6 +101,7 @@ jobs:
         -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN
         -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
         -DGEODE_UNITY_BUILD=ON
+        -DGEODE_DONT_BUILD_TEST_MODS=ON
       env:
         SPLAT_DIR: ${{ github.workspace }}/.xwin-cache/splat
         TOOLCHAIN: ${{ github.workspace }}/toolchain/clang-cl-msvc.cmake
