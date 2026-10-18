@@ -109,19 +109,21 @@ file(COPY "${mapping_headers_SOURCE_DIR}/bindings/include/Geode/mapping/"
 )
 
 # The 2.209 Broma snapshot forgot to declare that SequenceTriggerGameObject
-# embeds SequenceTriggerState by value. Fix the source metadata before codegen
-# so generated headers include the complete type on every build.
+# embeds SequenceTriggerState by value. Merge the dependency into the class's
+# existing attribute block before codegen.
 set(SEAGULL_2209_BRO "${GEODE_BINDINGS_REPO_PATH}/bindings/2.209/GeometryDash.bro")
 if (EXISTS "${SEAGULL_2209_BRO}")
 	file(READ "${SEAGULL_2209_BRO}" SEAGULL_2209_BRO_TEXT)
-	if (NOT SEAGULL_2209_BRO_TEXT MATCHES "\\[\\[depends\\(SequenceTriggerState\\)\\]\\][\\r\\n]+class SequenceTriggerGameObject")
-		string(FIND "${SEAGULL_2209_BRO_TEXT}" "class SequenceTriggerGameObject" SEAGULL_SEQUENCE_POS)
+	if (NOT SEAGULL_2209_BRO_TEXT MATCHES "link\\(android\\), depends\\(SequenceTriggerState\\)")
+		set(SEAGULL_SEQUENCE_OLD "[[link(android)]]\nclass SequenceTriggerGameObject")
+		set(SEAGULL_SEQUENCE_NEW "[[link(android), depends(SequenceTriggerState)]]\nclass SequenceTriggerGameObject")
+		string(FIND "${SEAGULL_2209_BRO_TEXT}" "${SEAGULL_SEQUENCE_OLD}" SEAGULL_SEQUENCE_POS)
 		if (SEAGULL_SEQUENCE_POS EQUAL -1)
-			message(FATAL_ERROR "Could not find SequenceTriggerGameObject in pinned 2.209 bindings")
+			message(FATAL_ERROR "Could not find SequenceTriggerGameObject attribute block in pinned 2.209 bindings")
 		endif()
 		string(REPLACE
-			"class SequenceTriggerGameObject"
-			"[[depends(SequenceTriggerState)]]\nclass SequenceTriggerGameObject"
+			"${SEAGULL_SEQUENCE_OLD}"
+			"${SEAGULL_SEQUENCE_NEW}"
 			SEAGULL_2209_BRO_TEXT
 			"${SEAGULL_2209_BRO_TEXT}"
 		)
