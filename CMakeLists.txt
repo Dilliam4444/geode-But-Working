@@ -94,6 +94,41 @@ else()
 	message(STATUS "Using ${GEODE_BINDINGS_REPO_PATH} for bindings repo")
 endif()
 
+# GD 2.209 support: the proven 2.209 bindings snapshot predates the generated
+# cocos mapping shim folder. Pull only those tiny shim headers from a fixed,
+# newer bindings snapshot so the old bindings remain otherwise unchanged.
+CPMAddPackage(NAME "mapping_headers"
+	GITHUB_REPOSITORY "geode-sdk/bindings"
+	GIT_TAG "be049399bf9136dc1dab93d5844db9730512a549"
+	DOWNLOAD_ONLY YES
+	NO_CACHE YES
+)
+file(MAKE_DIRECTORY "${GEODE_BINDINGS_REPO_PATH}/bindings/include/Geode/mapping")
+file(COPY "${mapping_headers_SOURCE_DIR}/bindings/include/Geode/mapping/"
+	DESTINATION "${GEODE_BINDINGS_REPO_PATH}/bindings/include/Geode/mapping"
+)
+
+# The 2.209 Broma snapshot forgot to declare that SequenceTriggerGameObject
+# embeds SequenceTriggerState by value. Fix the source metadata before codegen
+# so generated headers include the complete type on every build.
+set(SEAGULL_2209_BRO "${GEODE_BINDINGS_REPO_PATH}/bindings/2.209/GeometryDash.bro")
+if (EXISTS "${SEAGULL_2209_BRO}")
+	file(READ "${SEAGULL_2209_BRO}" SEAGULL_2209_BRO_TEXT)
+	if (NOT SEAGULL_2209_BRO_TEXT MATCHES "\\[\\[depends\\(SequenceTriggerState\\)\\]\\][\\r\\n]+class SequenceTriggerGameObject")
+		string(FIND "${SEAGULL_2209_BRO_TEXT}" "class SequenceTriggerGameObject" SEAGULL_SEQUENCE_POS)
+		if (SEAGULL_SEQUENCE_POS EQUAL -1)
+			message(FATAL_ERROR "Could not find SequenceTriggerGameObject in pinned 2.209 bindings")
+		endif()
+		string(REPLACE
+			"class SequenceTriggerGameObject"
+			"[[depends(SequenceTriggerState)]]\nclass SequenceTriggerGameObject"
+			SEAGULL_2209_BRO_TEXT
+			"${SEAGULL_2209_BRO_TEXT}"
+		)
+		file(WRITE "${SEAGULL_2209_BRO}" "${SEAGULL_2209_BRO_TEXT}")
+	endif()
+endif()
+
 project(geode-sdk VERSION ${GEODE_VERSION} LANGUAGES CXX C)
 
 if (NOT GEODE_DONT_USE_CCACHE)
