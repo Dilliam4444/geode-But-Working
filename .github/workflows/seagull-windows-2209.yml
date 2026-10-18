@@ -113,6 +113,12 @@ jobs:
         mkdir -p build/_deps/bindings-src/bindings/include/Geode/mapping
         cp -R mapping-shims/bindings/include/Geode/mapping/. build/_deps/bindings-src/bindings/include/Geode/mapping/
 
+    - name: Fix SequenceTriggerState include
+      shell: bash
+      run: |
+        HEADER="build/bindings/bindings/Geode/binding/SequenceTriggerGameObject.hpp"
+        grep -q 'binding/SequenceTriggerState.hpp' "$HEADER" || sed -i '6i #include <Geode/binding/SequenceTriggerState.hpp>' "$HEADER"
+
     - name: Build
       run: ${{ env.base-build-command }}
 
