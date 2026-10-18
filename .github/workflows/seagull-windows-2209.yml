@@ -1,0 +1,140 @@
+name: Seagull Windows 2.209
+
+on:
+  push:
+    branches:
+      - no-build-seagull-2209-paired
+  workflow_dispatch:
+
+env:
+  CPM_SOURCE_CACHE: ${{ github.workspace }}/cpm-cache
+  base-configure-command: >-
+    cmake -B build
+    -DCMAKE_BUILD_TYPE=RelWithDebInfo
+    -DGEODE_CODEGEN_CMAKE_ARGS="-DCMAKE_C_COMPILER=clang;-DCMAKE_CXX_COMPILER=clang++;-G Ninja"
+    -G Ninja
+  base-build-command: |
+    cmake --build build --config RelWithDebInfo --parallel
+    rm bin/nightly/resources/.geode_cache
+
+jobs:
+  build-windows:
+    name: Build Windows 2.209
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup caches
+      uses: ./.github/actions/setup-cache
+      with:
+        host: linux
+        target: win
+        use-ccache: true
+
+    - name: Setup Ninja
+      uses: ./.github/actions/setup-ninja
+      with:
+        host: linux
+
+    - name: Setup CLI
+      uses: geode-sdk/cli/.github/actions/setup@main
+
+    - name: Download xwin
+      uses: robinraju/release-downloader@v1.10
+      with:
+        repository: Jake-Shadle/xwin
+        latest: true
+        fileName: 'xwin-*-x86_64-unknown-linux-musl.tar.gz'
+        tarBall: false
+        zipBall: false
+        out-file-path: "epic-xwin"
+
+    - name: Prepare xwin
+      run: |
+        tar -xzf epic-xwin/xwin-*-x86_64-unknown-linux-musl.tar.gz -C epic-xwin
+        mv epic-xwin/xwin-*-x86_64-unknown-linux-musl/xwin ./xwin
+        ./xwin --arch x86_64 --sdk-version 10.0.22621 --accept-license list
+
+    - name: Setup xwin Cache
+      id: xwin-cache
+      uses: actions/cache@v4
+      with:
+        path: .xwin-cache
+        key: xwin-win-v1-${{ hashFiles('.xwin-cache/**/*') }}
+
+    - name: Download Windows headers
+      run: ./xwin --arch x86_64 --sdk-version 10.0.26100 --accept-license splat --include-debug-libs
+      if: steps.xwin-cache.outputs.cache-hit != 'true'
+
+    - name: Download clang-msvc-sdk toolchain
+      uses: actions/checkout@v4
+      with:
+        repository: 'geode-sdk/clang-msvc-sdk'
+        path: toolchain
+        submodules: recursive
+
+    - name: Install Clang
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y wget lsb-release software-properties-common gnupg
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 21 all
+
+    - name: Add LLVM 21 to path
+      run: echo "/usr/lib/llvm-21/bin" >> $GITHUB_PATH
+
+    - name: Verify LLVM
+      run: |
+        which clang-cl
+        which lld-link
+        clang-cl --version
+        lld-link --version
+
+    - name: Configure
+      run: >
+        ${{ env.base-configure-command }}
+        -DCMAKE_TOOLCHAIN_FILE=$TOOLCHAIN
+        -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=ON
+        -DGEODE_UNITY_BUILD=ON
+      env:
+        SPLAT_DIR: ${{ github.workspace }}/.xwin-cache/splat
+        TOOLCHAIN: ${{ github.workspace }}/toolchain/clang-cl-msvc.cmake
+        HOST_ARCH: x86_64
+
+    - name: Build
+      run: ${{ env.base-build-command }}
+
+    - name: Upload Windows binaries
+      uses: actions/upload-artifact@v4
+      with:
+        name: Geode-2.209-Windows
+        path: ./bin/nightly
+
+    - name: Package Installer
+      run: |
+        sudo apt install -y nsis
+        makensis -WX -V3 ./installer/windows/installer.nsi
+
+    - name: Upload Installer
+      uses: actions/upload-artifact@v4
+      with:
+        name: Geode-2.209-Installer
+        path: './installer/windows/geode-installer-win.exe'
+
+    - name: Package exact source
+      run: |
+        git archive --format=zip --output=Geode-2.209-Buildable-Source.zip HEAD
+        sha256sum Geode-2.209-Buildable-Source.zip > Geode-2.209-Buildable-Source.sha256
+
+    - name: Upload exact source
+      uses: actions/upload-artifact@v4
+      with:
+        name: Geode-2.209-Buildable-Source
+        path: |
+          Geode-2.209-Buildable-Source.zip
+          Geode-2.209-Buildable-Source.sha256
