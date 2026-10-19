@@ -10,6 +10,46 @@
 
 using namespace geode::prelude;
 
+static bool dispatchKeyboardMSG22091Compat(
+    CCKeyboardDispatcher* dispatcher,
+    enumKeyCodes key,
+    bool isDown,
+    bool isRepeat,
+    double timestamp
+) {
+    if (!dispatcher) return false;
+
+    // GD 2.2091's native CCKeyboardDispatcher::dispatchToTopDelegate can
+    // jump through a null delegate vtable entry with Geode's current cocos
+    // interface. Deliver the same key event to the top handler directly
+    // until upstream's keyboard bindings/interface catch up.
+    if (isRepeat && dispatcher->getBlockRepeat()) {
+        return false;
+    }
+
+    auto* handlers = dispatcher->m_pDelegates;
+    if (!handlers || handlers->count() == 0) {
+        return true;
+    }
+
+    auto* handler = static_cast<CCKeyboardHandler*>(handlers->objectAtIndex(0));
+    if (!handler) {
+        return true;
+    }
+
+    auto* delegate = handler->getDelegate();
+    if (!delegate) {
+        return true;
+    }
+
+    if (isDown) {
+        delegate->keyDown(key, timestamp);
+    } else {
+        delegate->keyUp(key, timestamp);
+    }
+    return true;
+}
+
 struct RawInputEvent {
     double timestamp = 0.0;
     KeyboardModifier mods;
@@ -517,7 +557,7 @@ struct GeodeRawInput : Modify<GeodeRawInput, CCEGLView> {
             );
 
             if (!ime->hasDelegate() || keyCode == KEY_Escape || keyCode == KEY_Enter) {
-                keyboardDispatcher->dispatchKeyboardMSG(
+                dispatchKeyboardMSG22091Compat(keyboardDispatcher, 
                     keyCode,
                     isDown,
                     data.action == Repeat,
@@ -743,7 +783,7 @@ struct GeodeControllerInput : Modify<GeodeControllerInput, CCApplication> {
                 return;
             }
 
-            dispatcher->dispatchKeyboardMSG(
+            dispatchKeyboardMSG22091Compat(dispatcher, 
                 data.key,
                 data.action != KeyboardInputData::Action::Release,
                 data.action == KeyboardInputData::Action::Repeat,
@@ -794,7 +834,7 @@ struct GeodeControllerInput : Modify<GeodeControllerInput, CCApplication> {
                     SendInput(1, &input, sizeof(input));
                 }
 
-                dispatcher->dispatchKeyboardMSG(
+                dispatchKeyboardMSG22091Compat(dispatcher, 
                     data.key,
                     data.action != KeyboardInputData::Action::Release,
                     data.action == KeyboardInputData::Action::Repeat,
