@@ -1,9 +1,9 @@
-name: Seagull Windows 2.209
+name: Seagull Windows 2.2091
 
 on:
   push:
     branches:
-      - no-build-seagull-2209-paired
+      - no-build-seagull-22091-ui
   workflow_dispatch:
 
 env:
@@ -126,7 +126,7 @@ jobs:
     - name: Upload Windows binaries
       uses: actions/upload-artifact@v4
       with:
-        name: Geode-2.209-Windows
+        name: Geode-2.2091-Windows
         path: ./bin/nightly
 
     - name: Package Installer
@@ -137,18 +137,18 @@ jobs:
     - name: Upload Installer
       uses: actions/upload-artifact@v4
       with:
-        name: Geode-2.209-Installer
+        name: Geode-2.2091-Installer
         path: './installer/windows/geode-installer-win.exe'
 
     - name: Package exact source
       run: |
-        git archive --format=zip --output=Geode-2.209-Buildable-Source.zip HEAD
-        sha256sum Geode-2.209-Buildable-Source.zip > Geode-2.209-Buildable-Source.sha256
+        git archive --format=zip --output=Geode-2.2091-Buildable-Source.zip HEAD
+        sha256sum Geode-2.2091-Buildable-Source.zip > Geode-2.2091-Buildable-Source.sha256
 
     - name: Upload exact source
       uses: actions/upload-artifact@v4
       with:
-        name: Geode-2.209-Buildable-Source
+        name: Geode-2.2091-Buildable-Source
         path: |
-          Geode-2.209-Buildable-Source.zip
-          Geode-2.209-Buildable-Source.sha256
+          Geode-2.2091-Buildable-Source.zip
+          Geode-2.2091-Buildable-Source.sha256
