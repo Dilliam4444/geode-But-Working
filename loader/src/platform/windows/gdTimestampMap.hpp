@@ -48,9 +48,18 @@ static std::string timestampToVersion(uint32_t timestamp) {
     auto it = getGDVersionTimestampMap().find(timestamp);
     if (it != getGDVersionTimestampMap().end()) {
         return std::string(it->second);
-    } else {
-        return fmt::to_string(timestamp);
     }
+
+    // Temporary 2.2091 compatibility window.
+    // 2.2091 shipped immediately after 2.209 with a new Windows executable
+    // timestamp before Geode's timestamp table was updated upstream.
+    // Keep this deliberately narrow so a later GD update does not silently
+    // bypass forward-compatibility mode.
+    if (timestamp > 1791899187 && timestamp < 1793000000) {
+        return "2.2091";
+    }
+
+    return fmt::to_string(timestamp);
 }
 
 static uint32_t versionToTimestamp(std::string_view targetVersion) {
